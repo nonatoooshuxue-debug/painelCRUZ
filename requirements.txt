@@ -1,3 +1,5 @@
 streamlit
 ploty
 pandas
+pygsheets
+google-auth
