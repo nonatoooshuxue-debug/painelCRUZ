@@ -33,7 +33,7 @@ def painel():
         
         sheet_id = "14HTe99DPOI3T3hNrZPSlkz5qOGbPjIoXGUeQ7WuJBMw"
         arquivo = client.open_by_key(sheet_id)
-        aba = arquivo.worksheet_by_title("Base_Cruz")
+        aba = arquivo.worksheet_by_title("MENU")
         df = aba.get_as_df(start="A7") 
         df.columns = df.columns.astype(str).str.strip().str.upper()
         
