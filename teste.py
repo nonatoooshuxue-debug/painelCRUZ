@@ -1,18 +1,61 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import pygsheets
+from google.oauth2 import service_account
 
 st.set_page_config(layout="wide")
 st.title("Acompanhamento de Inadimplência")
-@st.cache_data
+@st.cache_data(ttl=600)
 def painel():
-    df = pd.read_excel("PAINEL DE CR CRUZ.xlsx", skiprows=6)
-    df.columns = df.columns.astype(str).str.strip().str.upper()
-    df["DIAS"] = pd.to_numeric(df["DIAS"], errors = "coerce")
-    df["VALOR"] = (df["VALOR"].astype(str).str.replace("R$", "", regex=False).str.replace(",", ".", regex=False).str.strip())
-    df["VALOR"] = pd.to_numeric(df["VALOR"], errors="coerce").fillna(0)
-    df["RN"] = df["RN"].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-    return df
+    escopos = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    
+    info_dict = {
+        "type": st.secrets["painel_cruz"]["type"],
+        "project_id": st.secrets["painel_cruz"]["project_id"],
+        "private_key_id": st.secrets["painel_cruz"]["private_key_id"],
+        "private_key": st.secrets["painel_cruz"]["private_key"].replace("\\n", "\n"),
+        "client_email": st.secrets["painel_cruz"]["client_email"],
+        "client_id": st.secrets["painel_cruz"]["client_id"],
+        "auth_uri": st.secrets["painel_cruz"]["auth_uri"],
+        "token_uri": st.secrets["painel_cruz"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["painel_cruz"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["painel_cruz"]["client_x509_cert_url"],
+        "universe_domain": st.secrets.get("painel_cruz", {}).get("universe_domain", "googleapis.com")
+    }
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(info_dict, scopes=escopos)
+        client = pygsheets.authorize(custom_credentials=creds)
+        
+        sheet_id = "14HTe99DPOI3T3hNrZPSlkz5qOGbPjIoXGUeQ7WuJBMw"
+        arquivo = client.open_by_key(sheet_id)
+        aba = arquivo.worksheet_by_title("Base_Cruz")
+        df = aba.get_as_df(start="A7") 
+        df.columns = df.columns.astype(str).str.strip().str.upper()
+        
+        if "DIAS" in df.columns:
+            df["DIAS"] = pd.to_numeric(df["DIAS"], errors="coerce")
+            
+        if "VALOR" in df.columns:
+            df["VALOR"] = (df["VALOR"].astype(str)
+                           .str.replace("R$", "", regex=False)
+                           .str.replace(".", "", regex=False) # Remove ponto de milhar se houver
+                           .str.replace(",", ".", regex=False) # Troca vírgula decimal por ponto
+                           .str.strip())
+            df["VALOR"] = pd.to_numeric(df["VALOR"], errors="coerce").fillna(0)
+            
+        if "RN" in df.columns:
+            df["RN"] = df["RN"].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            
+        return df
+
+    except Exception as e:
+        st.error(f"Erro ao acessar a planilha: {e}")
+        return pd.DataFrame()
 
 
 df_painel = painel()
