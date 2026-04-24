@@ -1,5 +1,5 @@
 streamlit
-ploty
+plotly
 pandas
 pygsheets
 google-auth
