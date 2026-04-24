@@ -56,7 +56,9 @@ def painel():
     except Exception as e:
         st.error(f"Erro ao acessar a planilha: {e}")
         return pd.DataFrame()
-
+        
+df = df.loc[:, df.columns != ''] 
+df = df.loc[:, ~df.columns.duplicated()]
 
 df_painel = painel()
 gv_op = sorted(df_painel["NOME DO GC/GV"].dropna().astype(str).unique())
